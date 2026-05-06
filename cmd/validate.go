@@ -72,6 +72,16 @@ Examples:
 						broken = append(broken, brokenRef{sourceAddr, "REFERENCE", ref})
 					}
 				}
+
+				// Check CONFIRMED Q decision file references
+				qConfirmedRe := regexp.MustCompile(`\[Q\d+\s+CONFIRMED\s+([\w.\-]+)\]`)
+				for _, m := range qConfirmedRe.FindAllStringSubmatch(text, -1) {
+					decisionRef := m[1]
+					decisionFile := filepath.Join(loadstarBase, "DECISIONS", decisionRef+".md")
+					if !fs.Exists(decisionFile) {
+						broken = append(broken, brokenRef{sourceAddr, "OPEN_QUESTIONS", "DECISIONS/" + decisionRef + ".md"})
+					}
+				}
 			}
 		}
 

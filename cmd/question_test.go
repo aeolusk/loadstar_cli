@@ -1,9 +1,6 @@
 package cmd
 
 import (
-	"os"
-	"path/filepath"
-	"strings"
 	"testing"
 )
 
@@ -33,15 +30,15 @@ func setupQuestionTest(t *testing.T) string {
 
 	writeElement(t, loadstarBase, "W://root/wp_b",
 		wpWithQuestions("W://root/wp_b", "M://root", []string{
-			"- [Q1 RESOLVED wp_b.2026-04-28.001] Chose option C.",
+			"- [Q1 CONFIRMED wp_b.2026-04-28.001] Chose option C.",
 		}))
 
 	writeElement(t, loadstarBase, "W://root/wp_c",
 		wpWithQuestions("W://root/wp_c", "M://root", []string{
-			"- [Q1 DONE wp_c.2026-04-28.001] Applied to code.",
+			"- [Q1 CONFIRMED] Agreed inline — no decision file needed.",
 		}))
 
-	return filepath.Join(loadstarBase)
+	return loadstarBase
 }
 
 // ---- scanQuestions ----
@@ -70,11 +67,11 @@ func TestScanQuestions_StatesCorrect(t *testing.T) {
 	if stateMap["W://root/wp_a/Q2"] != "DEFERRED" {
 		t.Errorf("Q2 of wp_a should be DEFERRED, got %s", stateMap["W://root/wp_a/Q2"])
 	}
-	if stateMap["W://root/wp_b/Q1"] != "RESOLVED" {
-		t.Errorf("Q1 of wp_b should be RESOLVED, got %s", stateMap["W://root/wp_b/Q1"])
+	if stateMap["W://root/wp_b/Q1"] != "CONFIRMED" {
+		t.Errorf("Q1 of wp_b should be CONFIRMED, got %s", stateMap["W://root/wp_b/Q1"])
 	}
-	if stateMap["W://root/wp_c/Q1"] != "DONE" {
-		t.Errorf("Q1 of wp_c should be DONE, got %s", stateMap["W://root/wp_c/Q1"])
+	if stateMap["W://root/wp_c/Q1"] != "CONFIRMED" {
+		t.Errorf("Q1 of wp_c should be CONFIRMED, got %s", stateMap["W://root/wp_c/Q1"])
 	}
 }
 
@@ -91,6 +88,24 @@ func TestScanQuestions_RefParsed(t *testing.T) {
 		}
 	}
 	t.Error("wp_b Q1 not found")
+}
+
+func TestScanQuestions_ConfirmedInlineNoRef(t *testing.T) {
+	loadstarBase := setupQuestionTest(t)
+	entries := scanQuestions(loadstarBase)
+
+	for _, e := range entries {
+		if e.Address == "W://root/wp_c" && e.QID == "Q1" {
+			if e.State != "CONFIRMED" {
+				t.Errorf("expected CONFIRMED, got %s", e.State)
+			}
+			if e.Ref != "" {
+				t.Errorf("expected empty ref for inline CONFIRMED, got %q", e.Ref)
+			}
+			return
+		}
+	}
+	t.Error("wp_c Q1 not found")
 }
 
 func TestScanQuestions_Empty(t *testing.T) {
@@ -114,7 +129,6 @@ func TestQRe_Open(t *testing.T) {
 	if m == nil {
 		t.Fatal("expected match")
 	}
-	// m[1]=digit, m[2]=state, m[3]=ref, m[4]=text
 	if m[1] != "3" || m[2] != "" || m[4] != "Is this the right approach?" {
 		t.Errorf("unexpected match: %v", m)
 	}
@@ -134,65 +148,30 @@ func TestQRe_Deferred(t *testing.T) {
 	}
 }
 
-func TestQRe_Resolved(t *testing.T) {
-	line := "  - [Q1 RESOLVED wp_b.2026-04-28.001] Chose option C."
+func TestQRe_ConfirmedWithRef(t *testing.T) {
+	line := "  - [Q1 CONFIRMED wp_b.2026-04-28.001] Chose option C."
 	m := qRe.FindStringSubmatch(line)
 	if m == nil {
 		t.Fatal("expected match")
 	}
-	if m[2] != "RESOLVED" {
-		t.Errorf("expected RESOLVED, got %q", m[2])
+	if m[2] != "CONFIRMED" {
+		t.Errorf("expected CONFIRMED, got %q", m[2])
 	}
 	if m[3] != "wp_b.2026-04-28.001" {
 		t.Errorf("expected ref, got %q", m[3])
 	}
 }
 
-func TestQRe_Done(t *testing.T) {
-	line := "  - [Q1 DONE wp_c.2026-04-28.001] Applied to code."
+func TestQRe_ConfirmedInline(t *testing.T) {
+	line := "  - [Q4 CONFIRMED] Agreed inline."
 	m := qRe.FindStringSubmatch(line)
 	if m == nil {
 		t.Fatal("expected match")
 	}
-	if m[2] != "DONE" {
-		t.Errorf("expected DONE, got %q", m[2])
+	if m[2] != "CONFIRMED" {
+		t.Errorf("expected CONFIRMED, got %q", m[2])
 	}
-	if m[3] != "wp_c.2026-04-28.001" {
-		t.Errorf("expected ref, got %q", m[3])
-	}
-}
-
-// ---- updateQStateDone ----
-
-func TestUpdateQStateDone_ResolvedToDone(t *testing.T) {
-	loadstarBase := setupCmdTest(t)
-	writeElement(t, loadstarBase, "M://root",
-		"<MAP>\n## [ADDRESS] M://root\n## [STATUS] S_STB\n\n### IDENTITY\n- SUMMARY: root\n\n### WAYPOINTS\n- W://root/wp_x\n\n### COMMENT\n(없음)\n</MAP>\n")
-	writeElement(t, loadstarBase, "W://root/wp_x",
-		wpWithQuestions("W://root/wp_x", "M://root", []string{
-			"- [Q1 RESOLVED wp_x.2026-04-28.001] some decision",
-		}))
-
-	if err := updateQStateDone(loadstarBase, "W://root/wp_x", "Q1"); err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	data, _ := os.ReadFile(addressToFilePath(loadstarBase, "W://root/wp_x"))
-	if !strings.Contains(string(data), "[Q1 DONE wp_x.2026-04-28.001]") {
-		t.Errorf("expected DONE in file, got:\n%s", string(data))
-	}
-}
-
-func TestUpdateQStateDone_NotResolved_Fails(t *testing.T) {
-	loadstarBase := setupCmdTest(t)
-	writeElement(t, loadstarBase, "M://root",
-		"<MAP>\n## [ADDRESS] M://root\n## [STATUS] S_STB\n\n### IDENTITY\n- SUMMARY: root\n\n### WAYPOINTS\n- W://root/wp_y\n\n### COMMENT\n(없음)\n</MAP>\n")
-	writeElement(t, loadstarBase, "W://root/wp_y",
-		wpWithQuestions("W://root/wp_y", "M://root", []string{
-			"- [Q1] open question",
-		}))
-
-	if err := updateQStateDone(loadstarBase, "W://root/wp_y", "Q1"); err == nil {
-		t.Error("expected error for non-RESOLVED question, got nil")
+	if m[3] != "" {
+		t.Errorf("expected empty ref for inline, got %q", m[3])
 	}
 }
