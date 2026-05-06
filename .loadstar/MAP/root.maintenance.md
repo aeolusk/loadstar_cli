@@ -1,6 +1,5 @@
 <MAP>
 ## [ADDRESS] M://root/maintenance
-## [STATUS] S_PRG
 
 ### IDENTITY
 - SUMMARY: 프로젝트 유지보수 작업 (문서 드리프트, SPEC 정합성 정리 등) 전용 맵

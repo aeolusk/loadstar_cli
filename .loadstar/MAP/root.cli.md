@@ -1,6 +1,5 @@
 <MAP>
 ## [ADDRESS] M://root/cli
-## [STATUS] S_PRG
 
 ### IDENTITY
 - SUMMARY: LOADSTAR CLI 명령어 구현 전체를 담는 중간 지도. 각 명령어 구현을 WayPoint로 관리한다.
