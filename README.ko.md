@@ -113,8 +113,9 @@ M://root/cli            →  .loadstar/MAP/root.cli.md
 W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 ```
 
-- **M (Map)**: WayPoint 묶음을 위한 인덱스 — STATUS 없음, 계층 경로만 표현
-- **W (WayPoint)**: 작업의 최소 단위 — IDENTITY / CONNECTIONS / CODE_MAP / TECH_SPEC / ISSUE 로 구성
+- **M (Map)**: WayPoint 묶음을 위한 인덱스 — STATUS 없음, 계층 경로만 표현. 하위 트리의 큰 의도를 담는 **GOAL** 슬롯을 가진다.
+- **W (WayPoint)**: 작업의 최소 단위 — IDENTITY / CONNECTIONS / CODE_MAP / TODO / ISSUE 로 구성. 해당 WP가 달성해야 할 의도를 담는 **GOAL** 슬롯을 가진다.
+- **D (Data WayPoint / dwp)**: 코드와 독립적으로 변화하는 데이터 아티팩트(설정, 참조 데이터)의 메타 레코드 — `.loadstar/DATA_WAYPOINT/`에 저장.
 
 ---
 
@@ -122,13 +123,14 @@ W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 
 ```
 .loadstar/
-├── MAP/          M:// 요소 (마크다운)
-├── WAYPOINT/     W:// 요소 (마크다운)
-├── DECISIONS/    OPEN_QUESTIONS 결정 기록 (ADR)
-├── COMMON/       프로젝트 설정
-└── .clionly/     ⚠️ CLI 전용 — AI·사람 모두 직접 편집 금지
-    ├── LOG/      변경 이력 로그
-    └── TODO/     TODO_LIST·WP_SNAPSHOT (sync가 관리)
+├── MAP/              M:// 요소 (마크다운)
+├── WAYPOINT/         W:// 요소 (마크다운)
+├── DATA_WAYPOINT/    D:// 요소 — 데이터 아티팩트 메타데이터 (마크다운)
+├── DECISIONS/        OPEN_QUESTIONS 결정 기록 (ADR)
+├── COMMON/           프로젝트 설정
+└── .clionly/         ⚠️ CLI 전용 — AI·사람 모두 직접 편집 금지
+    ├── LOG/          변경 이력 로그
+    └── TODO/         TODO_LIST·WP_SNAPSHOT (sync가 관리)
 ```
 
 > `.clionly/` 직접 편집 시 LOG와 실제 메타 상태 간 정합성이 영구적으로 깨집니다.
@@ -138,13 +140,13 @@ W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 ## 🤖 AI 협업 워크플로우
 
 1. **세션 시작 시** — AI는 `LOADSTAR_INIT.md` 와 SPEC을 로드하고, `loadstar show` / `loadstar todo list` / `loadstar question` 으로 현재 상태를 파악합니다.
-2. **코드 수정 전** — 대상 WayPoint의 TECH_SPEC에 `- [ ] 작업 내용` 을 등록합니다.
+2. **코드 수정 전** — 대상 WayPoint의 TODO 섹션에 `- [ ] 작업 내용` 을 등록합니다.
 3. **수정 완료 후** — `- [x] YYYY-MM-DD 작업 내용` 으로 체크합니다.
 4. **WayPoint 전체 완료** — STATUS를 `S_PRG → S_STB` 로 변경합니다.
 5. **TODO 갱신** — `loadstar todo sync` 로 WP STATUS 기반 TODO_LIST를 자동 갱신합니다.
-6. **검증** — 작업 종료 전 `loadstar validate` 로 깨진 참조가 없는지 확인합니다.
+6. **검증** — 작업 종료 전 `loadstar validate` 로 깨진 참조 및 ORPHAN/DANGLING Data WayPoint가 없는지 확인합니다.
 
-> Claude Code 환경에서는 PostToolUse Hook이 소스 편집 시 TECH_SPEC 등록·갱신 리마인더를 자동 출력하도록 구성할 수 있습니다.
+> Claude Code 환경에서는 PostToolUse Hook이 소스 편집 시 TODO 등록·갱신 리마인더를 자동 출력하도록 구성할 수 있습니다.
 
 ---
 

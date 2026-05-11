@@ -113,8 +113,9 @@ M://root/cli            →  .loadstar/MAP/root.cli.md
 W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 ```
 
-- **M (Map)**: An index for grouping WayPoints — no STATUS, represents hierarchy only
-- **W (WayPoint)**: The smallest work unit — composed of IDENTITY / CONNECTIONS / CODE_MAP / TECH_SPEC / ISSUE
+- **M (Map)**: An index for grouping WayPoints — no STATUS, represents hierarchy only. Carries a **GOAL** slot for the high-level intent of the sub-tree.
+- **W (WayPoint)**: The smallest work unit — composed of IDENTITY / CONNECTIONS / CODE_MAP / TODO / ISSUE. Carries a **GOAL** slot for the intent this WayPoint fulfils.
+- **D (Data WayPoint / dwp)**: Metadata record for a data artifact (config, reference data) that changes independently of code — stored in `.loadstar/DATA_WAYPOINT/`.
 
 ---
 
@@ -122,13 +123,14 @@ W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 
 ```
 .loadstar/
-├── MAP/          M:// elements (Markdown)
-├── WAYPOINT/     W:// elements (Markdown)
-├── DECISIONS/    OPEN_QUESTIONS decision records (ADR)
-├── COMMON/       Project settings
-└── .clionly/     ⚠️ CLI-only — do not edit directly (AI or human)
-    ├── LOG/      Change history log
-    └── TODO/     TODO_LIST · WP_SNAPSHOT (managed by sync)
+├── MAP/              M:// elements (Markdown)
+├── WAYPOINT/         W:// elements (Markdown)
+├── DATA_WAYPOINT/    D:// elements — data artifact metadata (Markdown)
+├── DECISIONS/        OPEN_QUESTIONS decision records (ADR)
+├── COMMON/           Project settings
+└── .clionly/         ⚠️ CLI-only — do not edit directly (AI or human)
+    ├── LOG/          Change history log
+    └── TODO/         TODO_LIST · WP_SNAPSHOT (managed by sync)
 ```
 
 > Directly editing `.clionly/` permanently breaks consistency between LOG and the actual metadata state.
@@ -138,13 +140,13 @@ W://root/cli/cmd_show   →  .loadstar/WAYPOINT/root.cli.cmd_show.md
 ## 🤖 AI Collaboration Workflow
 
 1. **Session start** — AI loads `LOADSTAR_INIT.md` and the SPEC, then runs `loadstar show` / `loadstar todo list` / `loadstar question` to understand the current state.
-2. **Before modifying code** — Register `- [ ] task description` in the target WayPoint's TECH_SPEC.
+2. **Before modifying code** — Register `- [ ] task description` in the target WayPoint's TODO section.
 3. **After modification** — Check it off as `- [x] YYYY-MM-DD task description`.
 4. **WayPoint fully complete** — Change STATUS from `S_PRG → S_STB`.
 5. **Sync TODOs** — Run `loadstar todo sync` to auto-update TODO_LIST from WP STATUS.
-6. **Validate** — Run `loadstar validate` before finishing to confirm no broken references.
+6. **Validate** — Run `loadstar validate` before finishing to confirm no broken references (also detects ORPHAN/DANGLING Data WayPoints).
 
-> In Claude Code, a PostToolUse Hook can be configured to automatically output a TECH_SPEC registration/update reminder whenever source files are edited.
+> In Claude Code, a PostToolUse Hook can be configured to automatically output a TODO registration/update reminder whenever source files are edited.
 
 ---
 
